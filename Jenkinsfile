@@ -29,9 +29,10 @@ pipeline {
     }
 
     environment {
-        HEADLESS = 'true'
+        HEADLESS = 'false'
         KEEP_BROWSER_OPEN = 'false'
-        REUSE_SESSION = 'false'
+        REUSE_SESSION = 'true'
+        CHROME_USER_DATA_DIR = 'C:\\jenkins-agent\\.chrome-profile\\credaris-automation'
         SCREENSHOT_ON_FAILURE = 'true'
         PYTEST_MARKER = "${params.TEST_MARKER}"
         NOTIFY_EMAIL = "${params.NOTIFY_EMAIL}"

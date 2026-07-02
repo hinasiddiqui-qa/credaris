@@ -24,9 +24,14 @@ DEFAULTS = {
     "APPLICATION_LOGIN_PATH": "/#/Login",
     "MICROSOFT_LOGIN_URL": "https://login.microsoftonline.com",
     "BROWSER": "chrome",
-    "HEADLESS": "true",
-    "REUSE_SESSION": "false",
-    "CHROME_USER_DATA_DIR": ".chrome-profile/credaris-automation",
+    "HEADLESS": "false" if os.getenv("CI", "").lower() in {"true", "1", "yes"} else "true",
+    "REUSE_SESSION": "true" if os.getenv("CI", "").lower() in {"true", "1", "yes"} else "false",
+    "CHROME_USER_DATA_DIR": os.getenv(
+        "CHROME_USER_DATA_DIR",
+        r"C:\jenkins-agent\.chrome-profile\credaris-automation"
+        if os.getenv("CI", "").lower() in {"true", "1", "yes"}
+        else ".chrome-profile/credaris-automation",
+    ),
     "CHROME_PROFILE_DIRECTORY": "Default",
     "IMPLICIT_WAIT": "0",
     "EXPLICIT_WAIT": "15",

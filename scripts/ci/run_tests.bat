@@ -30,5 +30,9 @@ if not exist logs mkdir logs
 if not exist screenshots mkdir screenshots
 
 if not defined PYTEST_MARKER set "PYTEST_MARKER=smoke"
-py -3 -m pytest -m %PYTEST_MARKER% -v %*
+echo.
+echo Starting Credaris tests (session login may take several minutes on first run)...
+echo Approve Microsoft MFA on your phone if prompted.
+echo.
+py -3 -m pytest -m %PYTEST_MARKER% -v -s --log-cli-level=INFO %*
 exit /b %ERRORLEVEL%
