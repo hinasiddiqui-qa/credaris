@@ -15,9 +15,9 @@ $workspaceCookies = Join-Path $workspaceSessions "credaris_cookies.json"
 $agentSessions = "C:\jenkins-agent\sessions"
 $agentCookies = Join-Path $agentSessions "credaris_cookies.json"
 
-function Sync-Profile {
+function SyncProfile {
     if (-not (Test-Path (Join-Path $sourceProfile "Default"))) {
-        Write-Host "Local Chrome profile not found — run: py -3 scripts\bootstrap_session.py"
+        Write-Host "Local Chrome profile not found - run: py -3 scripts\bootstrap_session.py"
         return
     }
     if (-not (Test-Path (Join-Path $AgentProfile "Default"))) {
@@ -30,9 +30,9 @@ function Sync-Profile {
     }
 }
 
-function Sync-Cookies {
+function SyncCookies {
     if (-not (Test-Path $sourceCookies)) {
-        Write-Host "Local cookie file not found — profile-only session reuse."
+        Write-Host "Local cookie file not found - profile-only session reuse."
         return
     }
     New-Item -ItemType Directory -Force -Path $workspaceSessions | Out-Null
@@ -44,7 +44,7 @@ function Sync-Cookies {
     Write-Host "Session cookies copied to workspace and agent."
 }
 
-function Clear-ProfileLocks {
+function ClearProfileLocks {
     foreach ($name in @("SingletonLock", "SingletonCookie", "SingletonSocket")) {
         $lock = Join-Path $AgentProfile $name
         if (Test-Path $lock) {
@@ -54,12 +54,11 @@ function Clear-ProfileLocks {
 }
 
 Write-Host "=== Credaris CI session prepare ==="
-& Sync-Profile
-& Sync-Cookies
-& Clear-ProfileLocks
+SyncProfile
+SyncCookies
+ClearProfileLocks
 
 $profileOk = Test-Path (Join-Path $AgentProfile "Default")
-$cookiesOk = (Test-Path $workspaceCookies) -or $profileOk
 Write-Host "Agent profile ready: $profileOk"
 Write-Host "Workspace cookies ready: $(Test-Path $workspaceCookies)"
 if (-not $profileOk -and -not (Test-Path $workspaceCookies)) {
