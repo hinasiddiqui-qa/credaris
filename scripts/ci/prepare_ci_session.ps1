@@ -37,7 +37,9 @@ function Sync-Cookies {
     }
     New-Item -ItemType Directory -Force -Path $workspaceSessions | Out-Null
     New-Item -ItemType Directory -Force -Path $agentSessions | Out-Null
-    Copy-Item $sourceCookies $workspaceCookies -Force
+    if ($sourceCookies -ne $workspaceCookies) {
+        Copy-Item $sourceCookies $workspaceCookies -Force
+    }
     Copy-Item $sourceCookies $agentCookies -Force
     Write-Host "Session cookies copied to workspace and agent."
 }
@@ -52,14 +54,14 @@ function Clear-ProfileLocks {
 }
 
 Write-Host "=== Credaris CI session prepare ==="
-Sync-Profile
-Sync-Cookies
-Clear-ProfileLocks
+& Sync-Profile
+& Sync-Cookies
+& Clear-ProfileLocks
 
 $profileOk = Test-Path (Join-Path $AgentProfile "Default")
 $cookiesOk = (Test-Path $workspaceCookies) -or $profileOk
 Write-Host "Agent profile ready: $profileOk"
 Write-Host "Workspace cookies ready: $(Test-Path $workspaceCookies)"
 if (-not $profileOk -and -not (Test-Path $workspaceCookies)) {
-    Write-Warning "No session artifacts — CI will require Microsoft MFA approval on phone."
+    Write-Warning "No session artifacts - CI will require Microsoft MFA approval on phone."
 }
