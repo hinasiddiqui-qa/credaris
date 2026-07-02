@@ -47,6 +47,12 @@ pipeline {
             }
         }
 
+        stage('Prepare CI session') {
+            steps {
+                bat 'scripts\\ci\\prepare_ci_session.bat'
+            }
+        }
+
         stage('Run tests') {
             steps {
                 withCredentials([
