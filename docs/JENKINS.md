@@ -1,6 +1,8 @@
 # Jenkins CI/CD setup
 
-This project includes a declarative `Jenkinsfile` that runs the smoke suite, publishes JUnit + Allure reports, and archives screenshots/logs.
+This project includes a declarative `Jenkinsfile` that runs the smoke suite, publishes JUnit + Allure reports, and emails the Allure report after every build.
+
+**Local Jenkins:** [docs/JENKINS_LOCAL.md](JENKINS_LOCAL.md) — setup for `http://localhost:10000`
 
 ## Prerequisites on the Jenkins agent
 
