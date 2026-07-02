@@ -33,10 +33,7 @@ git commit -m "Initial commit: Credaris Selenium automation framework"
 git branch -M main
 
 # Add your remote (examples)
-git remote add origin https://github.com/YOUR_ORG/credaris-selenium-automation.git
-# git remote add origin https://dev.azure.com/YOUR_ORG/YOUR_PROJECT/_git/credaris-selenium-automation
-# git remote add origin https://gitlab.com/YOUR_ORG/credaris-selenium-automation.git
-
+git remote add origin https://github.com/hinasiddiqui-qa/credaris.git
 git push -u origin main
 ```
 
@@ -62,7 +59,7 @@ These IDs must match the `Jenkinsfile` exactly (or update the IDs in the pipelin
 3. Under **Pipeline**:
    - Definition: **Pipeline script from SCM**
    - SCM: **Git**
-   - Repository URL: your remote URL
+   - Repository URL: `https://github.com/hinasiddiqui-qa/credaris.git`
    - Credentials: Jenkins credential with read access to the repo
    - Branch: `main`
    - Script Path: `Jenkinsfile`

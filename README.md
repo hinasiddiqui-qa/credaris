@@ -74,7 +74,7 @@ git status
 git add .
 git commit -m "Initial commit: Credaris Selenium automation framework"
 git branch -M main
-git remote add origin <YOUR_REMOTE_URL>
+git remote add origin https://github.com/hinasiddiqui-qa/credaris.git
 git push -u origin main
 ```
 
