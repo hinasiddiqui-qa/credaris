@@ -34,26 +34,40 @@ The Credaris `Jenkinsfile` calls `emailext(...)`, which sends mail through these
 
 ### Create / update the job
 
-**Option A — Reload from disk** (after files are copied):
+The job files can be installed to `C:\ProgramData\Jenkins\.jenkins\jobs\credaris-selenium-automation\`.
 
-1. Ensure folder exists: `C:\ProgramData\Jenkins\.jenkins\jobs\credaris-selenium-automation\`
-2. Copy `scripts\jenkins\credaris-pipeline-job.xml` → `config.xml` in that folder
-3. **Manage Jenkins → Reload Configuration from Disk**
+**Fastest — reload from disk** (you are already logged into Jenkins):
 
-**Option B — UI**
+1. Open **http://localhost:10000/script**
+2. Paste and **Run**:
 
-1. **New Item** → `credaris-selenium-automation` → **Pipeline**
-2. Pipeline from SCM → Git → URL above → branch `*/main` → `Jenkinsfile`
-3. Add Git credential `github-hinasiddiqui-qa` if repo is private
+```groovy
+jenkins.model.Jenkins.getInstance().doReload()
+```
 
-**Option C — Script**
+3. Refresh the dashboard — **`credaris-selenium-automation`** should appear.
+
+Or: **Manage Jenkins (gear) → Reload Configuration from Disk**
+
+Or run from the project folder:
 
 ```powershell
-$env:JENKINS_URL   = "http://localhost:10000"
-$env:JENKINS_USER  = "your-jenkins-user"
-$env:JENKINS_TOKEN = "your-api-token"
-.\scripts\jenkins\setup_pipeline.ps1
+.\scripts\jenkins\install_local_job.ps1
 ```
+
+Then run the Script Console command above.
+
+### Create manually in UI (if reload does not show the job)
+
+1. **New Item** → name: **`credaris-selenium-automation`** → **Pipeline** → OK
+2. **Pipeline** section:
+   - Definition: **Pipeline script from SCM**
+   - SCM: **Git**
+   - Repository URL: `https://github.com/hinasiddiqui-qa/credaris.git`
+   - Credentials: `github-hinasiddiqui-qa`
+   - Branch: `*/main`
+   - Script Path: `Jenkinsfile`
+3. Save → **Build Now**
 
 ## Required Jenkins credentials (test login — add if missing)
 
