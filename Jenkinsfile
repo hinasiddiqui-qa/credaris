@@ -35,6 +35,8 @@ pipeline {
         SCREENSHOT_ON_FAILURE = 'true'
         PYTEST_MARKER = "${params.TEST_MARKER}"
         NOTIFY_EMAIL = "${params.NOTIFY_EMAIL}"
+        PYTHONIOENCODING = 'utf-8'
+        PYTHONUNBUFFERED = '1'
     }
 
     stages {

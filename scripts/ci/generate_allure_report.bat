@@ -15,11 +15,17 @@ if not exist "%RESULTS_DIR%" (
 
 where allure >nul 2>&1
 if errorlevel 1 (
-    echo Allure CLI not found on PATH — Jenkins Allure plugin will still publish results.
-    exit /b 0
+    if exist "C:\jenkins-agent\tools\org.allurereport.jenkins.tools.AllureCommandlineInstallation\Allure\bin\allure.bat" (
+        set "ALLURE_BIN=C:\jenkins-agent\tools\org.allurereport.jenkins.tools.AllureCommandlineInstallation\Allure\bin\allure.bat"
+    ) else (
+        echo Allure CLI not found on PATH — Jenkins Allure plugin will still publish results.
+        exit /b 0
+    )
+) else (
+    set "ALLURE_BIN=allure"
 )
 
-allure generate "%RESULTS_DIR%" -o "%REPORT_DIR%" --clean
+"%ALLURE_BIN%" generate "%RESULTS_DIR%" -o "%REPORT_DIR%" --clean
 if errorlevel 1 exit /b 1
 
 if exist "%ZIP_PATH%" del /f /q "%ZIP_PATH%"
