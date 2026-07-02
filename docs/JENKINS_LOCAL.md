@@ -1,124 +1,96 @@
 # Local Jenkins setup (http://localhost:10000)
 
-Use this guide for your local Jenkins instance.
+Your Jenkins instance is already configured for email. The Credaris pipeline uses that **global SMTP** — no duplicate SMTP setup in the repo.
 
-## 1. Log in
+## Your Jenkins email settings (already configured)
 
-Open: **http://localhost:10000**
+Read from `C:\ProgramData\Jenkins\.jenkins\` on your machine:
 
-Sign in with your Jenkins username and password.
-
-> **Security:** Do not share Jenkins passwords in chat or commit them to Git.  
-> If a password was exposed, change it in Jenkins → click your name → **Security**.
-
-## 2. Install plugins
-
-**Manage Jenkins → Plugins → Available plugins**
-
-Install and restart if prompted:
-
-| Plugin | Why |
+| Setting | Value |
 |---|---|
-| Email Extension Plugin | Sends Allure email after each build |
-| Allure Jenkins Plugin | Allure tab on build page |
-| Git plugin | Pull repo from GitHub |
-| Pipeline / Workflow plugins | Run `Jenkinsfile` |
+| Jenkins URL | `http://localhost:10000/` |
+| System admin email | `hina.siddiqui@rolustech.com` |
+| SMTP server | `smtp.gmail.com` |
+| SMTP port | `587` |
+| TLS | Enabled |
+| SSL | Disabled |
+| Default email suffix | `@rolustech.com` |
+| SMTP credential ID | `smtp-rolustech-hina` |
+| Default recipient (Email Extension) | `hina.siddiqui@rolustech.com` |
 
-## 3. Configure email (Allure notifications)
+The Credaris `Jenkinsfile` calls `emailext(...)`, which sends mail through these global settings (same as your Dakota Extension job).
 
-**Manage Jenkins → System**
+## Credaris pipeline job
 
-Scroll to **Extended E-mail Notification**:
-
-| Field | Suggested value (Rolustech / Microsoft 365) |
+| Setting | Value |
 |---|---|
-| SMTP server | `smtp.office365.com` |
-| Default user e-mail suffix | `@rolustech.com` |
-| SMTP Port | `587` |
-| Use TLS | ✓ |
-| Credentials | Add Jenkins credential with your mailbox + password |
+| Job name | `credaris-selenium-automation` |
+| Git repo | `https://github.com/hinasiddiqui-qa/credaris.git` |
+| Git credential | `github-hinasiddiqui-qa` |
+| Branch | `main` |
+| Script Path | `Jenkinsfile` |
+| Agent label (default) | `windows-dakota-perf` |
+| Notify email | `hina.siddiqui@rolustech.com` |
 
-Set **System Admin e-mail address** under **E-mail Notification** (required).
+### Create / update the job
 
-Save.
+**Option A — Reload from disk** (after files are copied):
 
-## 4. Create the pipeline job
+1. Ensure folder exists: `C:\ProgramData\Jenkins\.jenkins\jobs\credaris-selenium-automation\`
+2. Copy `scripts\jenkins\credaris-pipeline-job.xml` → `config.xml` in that folder
+3. **Manage Jenkins → Reload Configuration from Disk**
 
-### Option A — UI (easiest)
+**Option B — UI**
 
-1. **New Item** → name: `credaris-selenium-automation` → **Pipeline** → OK
-2. Under **Pipeline**:
-   - Definition: **Pipeline script from SCM**
-   - SCM: **Git**
-   - Repository URL: `https://github.com/hinasiddiqui-qa/credaris.git`
-   - Branch: `*/main`
-   - Script Path: `Jenkinsfile`
-3. Save → **Build Now**
+1. **New Item** → `credaris-selenium-automation` → **Pipeline**
+2. Pipeline from SCM → Git → URL above → branch `*/main` → `Jenkinsfile`
+3. Add Git credential `github-hinasiddiqui-qa` if repo is private
 
-### Option B — Script (API token)
-
-1. Jenkins → your name → **Security** → **Add new Token** → copy token
-2. In PowerShell:
+**Option C — Script**
 
 ```powershell
-cd C:\Users\hina.siddiqui\credaris-selenium-automation
-
 $env:JENKINS_URL   = "http://localhost:10000"
-$env:JENKINS_USER  = "hina.siddiqui@rolustech.com"
-$env:JENKINS_TOKEN = "paste-api-token-here"
-
+$env:JENKINS_USER  = "your-jenkins-user"
+$env:JENKINS_TOKEN = "your-api-token"
 .\scripts\jenkins\setup_pipeline.ps1
 ```
 
-Use an **API token**, not your web login password.
+## Required Jenkins credentials (test login — add if missing)
 
-## 5. Add test credentials in Jenkins
+| Credential ID | Type | Purpose |
+|---|---|---|
+| `credaris-microsoft-username` | Secret text | Microsoft SSO username |
+| `credaris-microsoft-password` | Secret text | Microsoft SSO password |
+| `credaris-sugar-username` | Secret text | Sugar CRM username |
+| `credaris-sugar-password` | Secret text | Sugar CRM password |
+| `github-hinasiddiqui-qa` | Username/password | Clone private GitHub repo |
+| `smtp-rolustech-hina` | Already exists | Global SMTP (do not duplicate) |
 
-**Manage Jenkins → Credentials → Add Credentials → Secret text**
+## What each build email contains
 
-| ID | Value |
-|---|---|
-| `credaris-microsoft-username` | Microsoft SSO username |
-| `credaris-microsoft-password` | Microsoft SSO password |
-| `credaris-sugar-username` | Sugar username |
-| `credaris-sugar-password` | Sugar password |
+Sent to **hina.siddiqui@rolustech.com** after **every** build:
 
-These IDs must match the `Jenkinsfile`.
+- Build status (SUCCESS / FAILURE) with pass/fail/total counts
+- **Open Allure Report** button → `http://localhost:10000/job/credaris-selenium-automation/<build>/allure/`
+- `allure-report.zip` attachment when Allure CLI is on the agent
+- Same HTML style as your Dakota Extension pipeline
 
-## 6. Prepare the Jenkins agent
+## Agent requirements
 
-Your local Jenkins agent needs:
+Default agent: **`windows-dakota-perf`** (same node as Dakota Extension).
+
+Install on that agent:
 
 - Python 3.10+
 - Google Chrome
 - ZPA / network access to `sugar-test.intern.credaris.ch`
-- Label: `selenium` (or change `AGENT_LABEL` when building)
-
-Optional — Allure ZIP in email:
-
-```powershell
-scoop install allure
-```
-
-## 7. What happens on each build
-
-Pipeline stages:
-
-```
-Checkout → Run tests → Generate Allure report → Publish + Email
-```
-
-Email goes to **hina.siddiqui@rolustech.com** (change via `NOTIFY_EMAIL` parameter) with:
-
-- Build status summary
-- Link to Allure in Jenkins: `http://localhost:10000/job/credaris-selenium-automation/<build>/allure/`
-- `allure-report.zip` attachment (if Allure CLI is installed)
+- Optional: Allure CLI (`scoop install allure`) for ZIP attachment
 
 ## Troubleshooting
 
 | Issue | Fix |
 |---|---|
-| Invalid username or password | Reset password in Jenkins Security; use API token for scripts |
-| Email not sent | Check SMTP settings and Email Extension Plugin |
-| Git clone fails | Add GitHub credentials in Jenkins if repo is private |
-| Tests fail on MFA | Bootstrap session on agent or use MFA-exempt account |
+| Email not sent | Verify **Manage Jenkins → System → Extended E-mail Notification** still shows `smtp.gmail.com:587` and credential `smtp-rolustech-hina` |
+| Git clone fails | Add or fix `github-hinasiddiqui-qa` credential |
+| Tests fail on login | Add the four `credaris-*` credentials in Jenkins |
+| Job not visible | Reload configuration from disk or restart Jenkins |

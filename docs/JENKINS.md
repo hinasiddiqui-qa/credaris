@@ -89,16 +89,17 @@ Install these plugins from **Manage Jenkins → Plugins**:
 
 Configure SMTP in **Manage Jenkins → System → Extended E-mail Notification**:
 
-| Setting | Example |
+| Setting | Credaris local Jenkins (already configured) |
 |---|---|
-| SMTP server | `smtp.office365.com` (for Rolustech / Microsoft 365) |
+| SMTP server | `smtp.gmail.com` |
 | SMTP Port | `587` |
 | Use TLS | Enabled |
-| Username | Jenkins service mailbox |
-| Password | App password or service account password |
+| Credentials | `smtp-rolustech-hina` |
 | Default user e-mail suffix | `@rolustech.com` |
 
-Also set **E-mail Notification → System Admin e-mail address** (required by Jenkins).
+Also set **E-mail Notification → System Admin e-mail address** to `hina.siddiqui@rolustech.com`.
+
+The Credaris `Jenkinsfile` uses `emailext` and inherits this global SMTP — you do not configure SMTP inside the repo.
 
 ### What you receive after every build
 

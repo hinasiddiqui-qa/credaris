@@ -1,14 +1,14 @@
 <?xml version='1.1' encoding='UTF-8'?>
 <flow-definition plugin="workflow-job">
-  <description>Credaris Sugar CRM Selenium automation. Runs smoke tests and emails Allure report after every build.</description>
+  <description>Credaris Sugar CRM Selenium automation. Uses global Jenkins SMTP (smtp.gmail.com) and emails Allure after every build.</description>
   <keepDependencies>false</keepDependencies>
   <properties>
     <hudson.model.ParametersDefinitionProperty>
       <parameterDefinitions>
         <hudson.model.StringParameterDefinition>
           <name>AGENT_LABEL</name>
-          <description>Jenkins agent label with Chrome, Python 3, and ZPA/network access.</description>
-          <defaultValue>selenium</defaultValue>
+          <description>Windows Jenkins node label with Chrome, Python 3, and ZPA/network access.</description>
+          <defaultValue>windows-dakota-perf</defaultValue>
           <trim>true</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.ChoiceParameterDefinition>
@@ -38,6 +38,7 @@
       <userRemoteConfigs>
         <hudson.plugins.git.UserRemoteConfig>
           <url>https://github.com/hinasiddiqui-qa/credaris.git</url>
+          <credentialsId>github-hinasiddiqui-qa</credentialsId>
         </hudson.plugins.git.UserRemoteConfig>
       </userRemoteConfigs>
       <branches>
