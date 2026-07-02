@@ -1,0 +1,8 @@
+[
+  {
+    "username": "rt.regular",
+    "password": "",
+    "display_name": "Regular User",
+    "note": "Deprecated — use sugar.username / sugar.password in config/config.properties"
+  }
+]

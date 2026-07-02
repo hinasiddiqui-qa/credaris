@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Local config (secrets)
+config/config.properties
+
+# Persistent browser session data (contains SSO tokens)
+.chrome-profile/
+sessions/
+
+# Generated artifacts
+reports/
+logs/
+screenshots/
+target/
+.pytest_cache/
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
