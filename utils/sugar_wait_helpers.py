@@ -11,41 +11,44 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-_IS_SUGAR_LOADING_SCRIPT = """
-const loadingSelectors = [
-  '.loading',
-  '.mask',
-  '.block-ui',
-  '.blockOverlay',
-  '.blockUI',
-  '.alert-loading',
-  '.drawer.loading',
-  '#overlay',
-  '#nprogress',
-  '[class*="loading"]',
-  '[class*="spinner"]',
-];
-for (const node of document.querySelectorAll(loadingSelectors.join(','))) {
-  if (!node || node.offsetParent === null) continue;
-  const style = window.getComputedStyle(node);
-  if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) {
-    continue;
-  }
-  const text = (node.textContent || '').replace(/\\s+/g, ' ').trim();
-  if (
-    text.includes('Loading') ||
-    node.classList.contains('loading') ||
-    node.classList.contains('mask') ||
-    node.id === 'nprogress'
-  ) {
-    return true;
-  }
-}
-if (window.jQuery && window.jQuery.active > 0) {
-  return true;
-}
-return false;
-"""
+def _is_sugar_loading(driver) -> bool:
+    return driver.execute_script(
+        """
+        const loadingSelectors = [
+          '.loading',
+          '.mask',
+          '.block-ui',
+          '.blockOverlay',
+          '.blockUI',
+          '.alert-loading',
+          '.drawer.loading',
+          '#overlay',
+          '#nprogress',
+          '[class*="loading"]',
+          '[class*="spinner"]',
+        ];
+        for (const node of document.querySelectorAll(loadingSelectors.join(','))) {
+          if (!node || node.offsetParent === null) continue;
+          const style = window.getComputedStyle(node);
+          if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) {
+            continue;
+          }
+          const text = (node.textContent || '').replace(/\\s+/g, ' ').trim();
+          if (
+            text.includes('Loading') ||
+            node.classList.contains('loading') ||
+            node.classList.contains('mask') ||
+            node.id === 'nprogress'
+          ) {
+            return true;
+          }
+        }
+        if (window.jQuery && window.jQuery.active > 0) {
+          return true;
+        }
+        return false;
+        """
+    )
 
 
 def wait_for_sugar_loading_overlay_gone(driver, config: AppConfig, *, context: str = "") -> None:
@@ -55,8 +58,7 @@ def wait_for_sugar_loading_overlay_gone(driver, config: AppConfig, *, context: s
     logger.info("Waiting for Sugar CRM loading to complete%s (timeout=%ss)", label, timeout)
     deadline = time.time() + timeout
     while time.time() < deadline:
-        loading = driver.execute_script(f"return ({_IS_SUGAR_LOADING_SCRIPT});")
-        if not loading:
+        if not _is_sugar_loading(driver):
             logger.info("Sugar CRM loading complete%s", label)
             return
         time.sleep(0.2)
