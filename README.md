@@ -97,6 +97,8 @@ Summary:
 
 CI generates `config/config.properties` from Jenkins credentials via `scripts/ci/generate_config_from_env.py`.
 
+After each build, Jenkins emails **hina.siddiqui@rolustech.com** with the Allure report link and ZIP attachment. See [docs/JENKINS.md](docs/JENKINS.md) for SMTP setup.
+
 ## Configuration
 
 Local settings live in `config/config.properties`. Environment variables override any property (used by Jenkins).
