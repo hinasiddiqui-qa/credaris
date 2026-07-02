@@ -31,6 +31,7 @@ class AppConfig:
     implicit_wait: int
     explicit_wait: int
     quick_poll_timeout: int
+    sugar_load_timeout: int
     screenshot_on_failure: bool
     log_level: str
     keep_browser_open: bool
@@ -163,6 +164,9 @@ def load_config(config_path: Path | None = None) -> AppConfig:
         explicit_wait=int(os.getenv("EXPLICIT_WAIT", section.get("explicit.wait", "15"))),
         quick_poll_timeout=int(
             os.getenv("QUICK_POLL_TIMEOUT", section.get("quick.poll.timeout", "2"))
+        ),
+        sugar_load_timeout=int(
+            os.getenv("SUGAR_LOAD_TIMEOUT", section.get("sugar.load.timeout", "60"))
         ),
         screenshot_on_failure=_parse_bool(
             os.getenv("SCREENSHOT_ON_FAILURE", section.get("screenshot.on.failure", "true")),

@@ -77,7 +77,8 @@ class BrowserEnvironmentPage(BasePage):
 
     def wait_for_application_ready(self) -> None:
         logger.info("Initial setup: waiting for application to fully load")
-        self.wait.until_document_ready()
+        self.wait_for_page_ready()
+        self.wait_for_sugar_app_ready(context="initial application open")
 
     def run_pre_test_initialization(self) -> None:
         """Legacy helper — prefer SessionOrchestrator for full Scenario routing."""

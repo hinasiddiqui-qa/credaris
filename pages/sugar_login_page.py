@@ -57,7 +57,7 @@ class SugarLoginPage(BasePage):
         return self.is_visible_quick(self.USERNAME) and self.is_visible_quick(self.PASSWORD)
 
     def _wait_until_logged_in(self) -> None:
-        """Minimal wait after Log In — do not wait for Home dashlets to finish loading."""
+        """Wait until Sugar login completes and the app finishes loading."""
         deadline = time.time() + self.config.explicit_wait
         while time.time() < deadline:
             if "login.microsoftonline.com" in self.driver.current_url:
@@ -67,10 +67,8 @@ class SugarLoginPage(BasePage):
                 time.sleep(0.05)
                 continue
             if not self.is_login_form_visible_quick():
-                document_ready = self.driver.execute_script(
-                    "return document.readyState === 'complete'"
-                )
-                if document_ready:
+                if self.driver.execute_script("return document.readyState === 'complete'"):
+                    self.wait_for_sugar_app_ready(context="after Sugar login")
                     return
             time.sleep(0.05)
         raise TimeoutError("Sugar CRM login did not complete")

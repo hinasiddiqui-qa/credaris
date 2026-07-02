@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import time
-
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
 from core.config_loader import AppConfig, load_config
+from utils.sugar_wait_helpers import wait_for_sugar_app_ready, wait_for_sugar_loading_overlay_gone
 from utils.wait_helpers import WaitHelpers
 
 
@@ -73,25 +72,13 @@ class BasePage:
         except Exception:
             pass
 
-    def wait_for_sugar_loading_overlay_gone(self) -> None:
+    def wait_for_sugar_loading_overlay_gone(self, *, context: str = "") -> None:
         """Wait until Sugar's blocking Loading overlay/modal is dismissed."""
-        deadline = time.time() + self.config.explicit_wait
-        while time.time() < deadline:
-            loading_visible = self.driver.execute_script(
-                """
-                const nodes = [...document.querySelectorAll(
-                  '.loading, .modal, [class*="loading"], .block-ui, .drawer.loading, .alert-loading'
-                )];
-                return nodes.some((node) => {
-                  if (node.offsetParent === null) return false;
-                  const text = (node.textContent || '').replace(/\\s+/g, ' ').trim();
-                  return text.includes('Loading') || node.classList.contains('loading');
-                });
-                """
-            )
-            if not loading_visible:
-                return
-            time.sleep(0.1)
+        wait_for_sugar_loading_overlay_gone(self.driver, self.config, context=context)
+
+    def wait_for_sugar_app_ready(self, *, context: str = "") -> None:
+        """Wait until Sugar CRM page is fully loaded before continuing."""
+        wait_for_sugar_app_ready(self.driver, self.config, context=context)
 
     def find(self, locator: tuple[str, str]) -> WebElement:
         return self.wait.until_visible(locator)

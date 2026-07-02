@@ -41,6 +41,7 @@ def _defaults() -> dict[str, str]:
         "EXPLICIT_WAIT": "15",
         "QUICK_POLL_TIMEOUT": "2",
         "MFA_WAIT_TIMEOUT": "600",
+        "SUGAR_LOAD_TIMEOUT": "90" if ci else "60",
         "SCREENSHOT_ON_FAILURE": "true",
         "LOG_LEVEL": "INFO",
         "KEEP_BROWSER_OPEN": "false",
@@ -89,6 +90,7 @@ implicit.wait={_env("IMPLICIT_WAIT", defaults["IMPLICIT_WAIT"])}
 explicit.wait={_env("EXPLICIT_WAIT", defaults["EXPLICIT_WAIT"])}
 quick.poll.timeout={_env("QUICK_POLL_TIMEOUT", defaults["QUICK_POLL_TIMEOUT"])}
 mfa.wait.timeout={_env("MFA_WAIT_TIMEOUT", defaults["MFA_WAIT_TIMEOUT"])}
+sugar.load.timeout={_env("SUGAR_LOAD_TIMEOUT", defaults["SUGAR_LOAD_TIMEOUT"])}
 
 # Reporting / runtime
 screenshot.on.failure={_env("SCREENSHOT_ON_FAILURE", defaults["SCREENSHOT_ON_FAILURE"])}

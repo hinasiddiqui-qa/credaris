@@ -112,7 +112,7 @@ class ContactsPage(BasePage):
             logger.info("Contacts listview already loaded")
             return self
 
-        deadline = time.time() + self.config.explicit_wait
+        deadline = time.time() + self.config.sugar_load_timeout
         while time.time() < deadline:
             if self._is_listview_ready():
                 logger.info("Contacts listview ready")
@@ -120,9 +120,10 @@ class ContactsPage(BasePage):
             if self._is_listview_route() and self.is_visible_quick(self.CREATE_BUTTON_LOCATORS[0]):
                 logger.info("Contacts listview route ready with Create button")
                 return self
-            time.sleep(0.05)
+            self.wait_for_sugar_loading_overlay_gone(context="contacts listview")
+            time.sleep(0.1)
 
-        self.wait_for_page_ready()
+        self.wait_for_sugar_app_ready(context="contacts listview")
         self.wait.until_visible(self.LISTVIEW_HEADER)
         self.wait.until_visible(self.LISTVIEW_TABLE)
         self.wait.until_clickable(self.CREATE_BUTTON_LOCATORS[0])
@@ -138,7 +139,7 @@ class ContactsPage(BasePage):
             return self
 
         self._navigate_to_url(self.contacts_create_url)
-        self.wait_for_sugar_loading_overlay_gone()
+        self.wait_for_sugar_app_ready(context="contact create form")
         return self.wait_until_create_form_loaded()
 
     def _is_listview_ready(self) -> bool:
@@ -150,12 +151,14 @@ class ContactsPage(BasePage):
 
     def wait_until_create_form_loaded(self) -> ContactsPage:
         logger.info("Waiting for Contact create form to load")
-        deadline = time.time() + self.config.explicit_wait
+        deadline = time.time() + self.config.sugar_load_timeout
         while time.time() < deadline:
             current_hash = self.driver.execute_script("return location.hash || ''").lower()
             if "contacts/create" in current_hash and self.is_visible_quick(self.FIRST_NAME):
                 return self
-            time.sleep(0.05)
+            self.wait_for_sugar_loading_overlay_gone(context="contact create form fields")
+            time.sleep(0.1)
+        self.wait_for_sugar_app_ready(context="contact create form fields")
         self.wait.until_visible(self.FIRST_NAME)
         return self
 
@@ -647,13 +650,14 @@ class ContactsPage(BasePage):
 
     def wait_until_detail_view_loaded(self, first_name: str, last_name: str) -> ContactsPage:
         logger.info("Waiting for Contact detail view: %s %s", first_name, last_name)
-        deadline = time.time() + self.config.explicit_wait
+        deadline = time.time() + self.config.sugar_load_timeout
         while time.time() < deadline:
             if self.is_detail_view_loaded(first_name, last_name, quick=True):
                 return self
             if self.is_detail_view_loaded(first_name, last_name):
                 return self
-            time.sleep(0.05)
+            self.wait_for_sugar_loading_overlay_gone(context="contact detail view")
+            time.sleep(0.1)
         raise TimeoutError(
             f"Contact detail view did not load for {first_name} {last_name}"
         )

@@ -118,6 +118,7 @@ def suite_contact_page(app_config: AppConfig, sugar_crm_ready):
     Contact and lead tests reuse this record instead of creating duplicates.
     """
     logger.info("Creating suite contact (once per test session)")
+    sugar_crm_ready.wait_for_sugar_app_ready(context="before suite contact create")
     sugar_crm_ready.create_contact_and_open_detail()
     return sugar_crm_ready
 

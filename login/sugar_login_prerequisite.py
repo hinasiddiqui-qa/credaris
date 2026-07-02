@@ -19,7 +19,7 @@ def login_to_sugar_crm(
     app_config: AppConfig,
     sugar_user: dict,
 ) -> ContactsPage:
-    """Enter Sugar credentials when needed, then leave Home immediately for contact create."""
+    """Enter Sugar credentials when needed, then wait for app load before tests."""
     sugar_login = SugarLoginPage(driver, app_config)
     contacts_page = ContactsPage(driver, app_config)
 
@@ -28,10 +28,12 @@ def login_to_sugar_crm(
         if app_config.reuse_session:
             SessionStorage(app_config).save_session(driver)
     elif contacts_page._is_home_route():
-        logger.info("Already logged in on Home — navigating straight to contact create form")
+        logger.info("Already logged in on Home — waiting for Sugar to finish loading")
+        contacts_page.wait_for_sugar_app_ready(context="existing Home session")
         contacts_page.open_create_form_direct()
         return contacts_page
 
+    contacts_page.wait_for_sugar_app_ready(context="before contact create flow")
     if contacts_page._is_home_route():
         logger.info("Home dashboard loaded — navigating straight to contact create form")
         contacts_page.open_create_form_direct()
