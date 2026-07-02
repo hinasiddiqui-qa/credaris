@@ -24,6 +24,7 @@ from core.config_loader import AppConfig, load_config
 from core.driver_factory import DriverFactory
 from login.sugar_login_prerequisite import run_sugar_login_prerequisite
 from setup.initial_setup_prerequisite import run_initial_setup
+from utils.console_progress import announce
 from utils.data_loader import load_json
 from utils.logger import get_logger
 from utils.screenshot_helper import capture_screenshot
@@ -63,9 +64,16 @@ def app_config() -> AppConfig:
 
 @pytest.fixture(scope="session")
 def driver(app_config: AppConfig):
+    announce(
+        "Launching Chrome for Credaris automation "
+        f"(profile: {app_config.resolved_user_data_dir})"
+    )
+    announce("If this hangs, close any open Chrome window using the same profile and retry.")
     drv = DriverFactory.create_driver(app_config)
+    announce("Chrome launched successfully.")
     yield drv
     if app_config.keep_browser_open:
+        announce("KEEP_BROWSER_OPEN is enabled — close Chrome manually when finished.")
         logger.info(
             "KEEP_BROWSER_OPEN is enabled — browser was not closed automatically. "
             "Close the Chrome window manually when finished."
@@ -98,44 +106,57 @@ def sample_contact():
 
 
 @pytest.fixture(scope="session")
-def application_ready(driver, app_config: AppConfig, test_user):
-    """Prerequisite 1 — Initial Setup (see setup/initial_setup_prerequisite.py)."""
-    return run_initial_setup(driver, app_config, test_user)
-
-
-@pytest.fixture(scope="session")
-def sugar_crm_ready(driver, app_config: AppConfig, application_ready, sugar_user):
-    """Prerequisite 2 — Sugar CRM login (see login/sugar_login_prerequisite.py)."""
-    return run_sugar_login_prerequisite(driver, app_config, application_ready, sugar_user)
-
-
-@pytest.fixture(scope="session")
-def suite_contact_page(app_config: AppConfig, sugar_crm_ready):
+def session_prerequisites(driver, app_config: AppConfig, test_user, sugar_user):
     """
-    Prerequisite 3 — shared suite contact for module tests.
-
-    Create exactly one contact for the whole pytest session.
-    Contact and lead tests reuse this record instead of creating duplicates.
+    Run all prerequisites once before any test:
+    1. Initial setup (ZPA / Microsoft SSO)
+    2. Sugar CRM login
+    3. Shared suite contact create
     """
-    logger.info("Creating suite contact (once per test session)")
-    sugar_crm_ready.wait_for_sugar_app_ready(context="before suite contact create")
-    sugar_crm_ready.create_contact_and_open_detail()
-    return sugar_crm_ready
+    announce("Step 1/3 — Initial setup: ZPA / Microsoft SSO / open Sugar CRM")
+    application_ready = run_initial_setup(driver, app_config, test_user)
+
+    announce("Step 2/3 — Sugar CRM login")
+    contacts_page = run_sugar_login_prerequisite(
+        driver, app_config, application_ready, sugar_user
+    )
+
+    announce("Step 3/3 — Create shared suite contact (once per session)")
+    contacts_page.wait_for_sugar_app_ready(context="before suite contact create")
+    contacts_page.create_contact_and_open_detail()
+    announce("Session prerequisites complete — starting tests.")
+    return contacts_page
 
 
 @pytest.fixture(scope="session")
-def initial_setup_complete(application_ready):
-    return application_ready
+def application_ready(session_prerequisites):
+    return session_prerequisites
 
 
 @pytest.fixture(scope="session")
-def prepared_app(application_ready):
-    return application_ready
+def sugar_crm_ready(session_prerequisites):
+    return session_prerequisites
 
 
 @pytest.fixture(scope="session")
-def authenticated_session(sugar_crm_ready):
-    return sugar_crm_ready
+def suite_contact_page(session_prerequisites):
+    """Shared Contacts page with suite contact detail already open."""
+    return session_prerequisites
+
+
+@pytest.fixture(scope="session")
+def initial_setup_complete(session_prerequisites):
+    return session_prerequisites
+
+
+@pytest.fixture(scope="session")
+def prepared_app(session_prerequisites):
+    return session_prerequisites
+
+
+@pytest.fixture(scope="session")
+def authenticated_session(session_prerequisites):
+    return session_prerequisites
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)

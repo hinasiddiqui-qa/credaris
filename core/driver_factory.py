@@ -14,6 +14,11 @@ from selenium.webdriver.firefox.service import Service as FirefoxService
 
 from core.config_loader import AppConfig
 
+from utils.console_progress import announce
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class DriverFactory:
     @staticmethod
@@ -53,6 +58,10 @@ class DriverFactory:
             profile_dir = config.resolved_user_data_dir
             profile_dir.mkdir(parents=True, exist_ok=True)
             DriverFactory._clean_profile_locks(profile_dir)
+            if (profile_dir / "SingletonLock").exists():
+                announce(
+                    "WARNING: Chrome profile still locked. Close all Chrome windows and retry."
+                )
             options.add_argument(f"--user-data-dir={profile_dir.resolve()}")
             if config.chrome_profile_directory:
                 options.add_argument(f"--profile-directory={config.chrome_profile_directory}")
