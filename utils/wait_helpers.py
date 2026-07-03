@@ -25,6 +25,18 @@ class WaitHelpers:
         return self.wait.until(EC.presence_of_element_located(locator))
 
     def is_visible(self, locator: tuple[str, str], timeout: int | None = None) -> bool:
+        """
+        Visibility check used for optional/transient UI (popups, toolbars, dropdowns).
+
+        Fast-paths elements that are not in the DOM at all via find_elements (no wait),
+        since WebDriverWait always blocks for the full timeout when a locator never
+        matches — that cost adds up badly across many "is it there?" checks per test.
+        Only falls back to the polling wait when the element exists but may still be
+        animating/rendering into a visible state.
+        """
+        if not self.driver.find_elements(*locator):
+            return False
+
         wait = WebDriverWait(self.driver, timeout if timeout is not None else self.timeout)
         try:
             wait.until(EC.visibility_of_element_located(locator))

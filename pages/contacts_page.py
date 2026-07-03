@@ -305,12 +305,17 @@ class ContactsPage(BasePage):
         """Open contact detail view without creating a new record."""
         if self.is_detail_view_loaded(first_name, last_name, quick=True):
             logger.info("Contact detail view already open for %s %s", first_name, last_name)
-            return self
-        return self.open_latest_contact_detail(
-            first_name,
-            last_name,
-            post_save_done=True,
-        )
+        else:
+            self.open_latest_contact_detail(
+                first_name,
+                last_name,
+                post_save_done=True,
+            )
+
+        from pages.contact_detail_page import ContactDetailPage
+
+        ContactDetailPage(self.driver, self.config).wait_for_detail_toolbar_ready()
+        return self
 
     def click_save(self) -> ContactsPage:
         logger.info("Clicking Save on Contact create form")

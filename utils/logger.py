@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 LOG_DIR = PROJECT_ROOT / "logs"
+
+
+def _running_under_pytest() -> bool:
+    return bool(os.getenv("PYTEST_CURRENT_TEST")) or "pytest" in sys.modules
+
+
+def _console_logging_enabled() -> bool:
+    if os.getenv("LOG_TO_CONSOLE", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return True
+    return not _running_under_pytest()
 
 
 def get_logger(name: str = "credaris.automation", level: str = "INFO") -> logging.Logger:
@@ -24,9 +36,10 @@ def get_logger(name: str = "credaris.automation", level: str = "INFO") -> loggin
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
+    if _console_logging_enabled():
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
 
     file_handler = logging.FileHandler(
         LOG_DIR / f"test_run_{datetime.now():%Y%m%d_%H%M%S}.log",

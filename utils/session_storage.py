@@ -73,6 +73,15 @@ class SessionStorage:
         if self.cookie_file.exists():
             self.cookie_file.unlink()
 
+    def clear_browser_cookies(self, driver: WebDriver) -> None:
+        """Clear in-browser cookies so Microsoft SSO is required on next navigation."""
+        try:
+            driver.execute_cdp_cmd("Network.enable", {})
+            driver.execute_cdp_cmd("Network.clearBrowserCookies", {})
+            logger.info("Cleared in-browser cookies via CDP")
+        except Exception as exc:
+            logger.warning("Could not clear browser cookies via CDP: %s", exc)
+
     def _collect_cookies(self, driver: WebDriver) -> list[dict]:
         try:
             driver.execute_cdp_cmd("Network.enable", {})

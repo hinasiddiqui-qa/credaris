@@ -38,6 +38,28 @@ class BrowserEnvironmentPage(BasePage):
             return
         logger.info("Initial setup: no 'Restore pages?' popup detected")
 
+    def dismiss_chrome_restore_infobar(self) -> None:
+        """Dismiss Chrome's native 'Restore pages?' crash recovery infobar if shown."""
+        chrome_restore_locators = (
+            (
+                By.XPATH,
+                "//*[contains(normalize-space(.), 'Restore pages')]"
+                "/ancestor::*[contains(@class,'infobar') or @role='alert'][1]"
+                "//button[@aria-label='Close' or contains(@class,'close')]",
+            ),
+            (
+                By.XPATH,
+                "//*[contains(normalize-space(.), 'didn't shut down correctly')]"
+                "/ancestor::*[1]//button[@aria-label='Close']",
+            ),
+            (By.XPATH, "//*[@id='infobar-container']//button"),
+        )
+        for locator in chrome_restore_locators:
+            if self.click_if_visible_quick(locator):
+                logger.info("Initial setup: dismissed Chrome 'Restore pages?' infobar")
+                return
+        logger.debug("Initial setup: no Chrome restore infobar detected")
+
     def navigate_to_application(self) -> None:
         url = self.config.application_url.rstrip("/") + "/"
         logger.info("Initial setup: navigating to application URL %s", url)
@@ -75,14 +97,33 @@ class BrowserEnvironmentPage(BasePage):
 
         logger.warning("Initial setup: could not locate proceed link on privacy error page")
 
+    def open_sugar_test_and_wait(self, *, context: str = "initial application open") -> None:
+        """
+        Open sugar-test when needed and wait until elements finish loading.
+
+        Does not navigate to the zpa-ba auth portal. Skips the load wait when still on
+        Microsoft SSO — call MicrosoftSSOPage.login first, then invoke this again.
+        """
+        on_microsoft_sso = "login.microsoftonline.com" in self.driver.current_url
+        if on_microsoft_sso:
+            logger.info("Initial setup: on Microsoft SSO page — skipping sugar load wait until login completes")
+            return
+
+        if self.config.application_host in self.driver.current_url:
+            logger.info("Initial setup: staying on sugar-test while the application finishes loading")
+        else:
+            self.navigate_to_application()
+
+        self.bypass_privacy_error_if_present()
+        logger.info("Initial setup: waiting for sugar-test elements to load (%s)", context)
+        self.wait_for_page_ready()
+        self.wait_for_sugar_app_ready(context=context)
+
     def wait_for_application_ready(self) -> None:
         logger.info("Initial setup: waiting for application to fully load")
-        self.wait_for_page_ready()
-        self.wait_for_sugar_app_ready(context="initial application open")
+        self.open_sugar_test_and_wait(context="initial application open")
 
     def run_pre_test_initialization(self) -> None:
-        """Legacy helper — prefer SessionOrchestrator for full Scenario routing."""
+        """Legacy helper — prefer SessionOrchestrator for sugar-test-only routing."""
         self.dismiss_restore_pages_popup()
-        self.navigate_to_application()
-        self.bypass_privacy_error_if_present()
-        self.wait_for_application_ready()
+        self.open_sugar_test_and_wait()

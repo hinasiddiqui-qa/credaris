@@ -1,7 +1,9 @@
 """
-Session orchestrator — Initial Check with Scenario 1 / Scenario 2 routing.
+Session orchestrator — Initial Setup via sugar-test only.
 
-Each URL and login step runs at most once per pytest session.
+Opens https://sugar-test.intern.credaris.ch/, waits for the app to finish loading,
+and completes Microsoft SSO only when sugar-test redirects there. The zpa-ba auth
+portal is never used during pytest prerequisites.
 """
 
 from __future__ import annotations
@@ -16,9 +18,12 @@ from pages.browser_environment_page import BrowserEnvironmentPage
 from pages.microsoft_sso_page import MicrosoftSSOPage
 from utils.logger import get_logger
 from utils.session_storage import SessionStorage
-from workflows.auth_workflow import AuthWorkflow
 
 logger = get_logger(__name__)
+
+
+def _skip_session_restore() -> bool:
+    return os.getenv("SKIP_SESSION_RESTORE", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 class SessionOrchestrator:
@@ -43,23 +48,18 @@ class SessionOrchestrator:
 
         microsoft_user = self._microsoft_credentials(user)
 
-        logger.info("=== Initial Check: verifying authenticated session ===")
+        logger.info("=== Initial Setup: open sugar-test and wait for application to load ===")
         self.browser_env.dismiss_restore_pages_popup()
 
-        if self._try_scenario_2(microsoft_user):
-            SessionOrchestrator._initialized = True
-            return self.application
+        if self.config.reuse_session and self.storage.has_saved_session() and not _skip_session_restore():
+            logger.info("Restoring saved session artifacts")
+            self.storage.restore_session(self.driver)
+        elif _skip_session_restore():
+            logger.info("Skipping saved session restore — expecting fresh Microsoft SSO")
 
-        logger.info("Initial Check result: no valid session → Scenario 1")
-        if not microsoft_user["username"] or not microsoft_user["password"]:
-            raise RuntimeError(
-                "No valid session and Microsoft credentials are missing. "
-                "Set microsoft.username and microsoft.password in config/config.properties"
-            )
-
-        app = self._scenario_1(microsoft_user)
+        self._open_sugar_test_and_authenticate(microsoft_user)
         SessionOrchestrator._initialized = True
-        return app
+        return self.application
 
     def _microsoft_credentials(self, user: dict | None) -> dict:
         if user and user.get("username") and user.get("password"):
@@ -69,82 +69,59 @@ class SessionOrchestrator:
             "password": self.config.microsoft_password,
         }
 
-    def _open_application_once(self) -> None:
-        """Navigate to sugar-test and handle privacy warning — single entry point."""
+    def _is_on_sugar_test(self) -> bool:
+        return self.config.application_host in self.driver.current_url
+
+    def _open_sugar_test_and_authenticate(self, user: dict) -> None:
+        """Open sugar-test, complete Microsoft SSO when redirected, then wait for load."""
+        logger.info(
+            "Opening sugar-test at %s (zpa-ba auth portal will not be used)",
+            self.config.application_url,
+        )
         self.browser_env.navigate_to_application()
         self.browser_env.bypass_privacy_error_if_present()
-        self.browser_env.wait_for_application_ready()
-
-    def _complete_microsoft_login_if_needed(self, user: dict) -> bool:
-        """Complete Microsoft SSO when sugar-test redirects to Entra ID."""
-        if not self.application.requires_microsoft_login():
-            return True
-
-        logger.info("sugar-test requires Microsoft SSO — completing application login")
-        MicrosoftSSOPage(self.driver, self.config).login(
-            user["username"],
-            user["password"],
-            mfa_timeout=self.mfa_timeout,
-        )
-        self.browser_env.wait_for_application_ready()
-        return not self.application.requires_microsoft_login()
-
-    def _application_accessible(self) -> bool:
-        return self.application.is_accessible()
-
-    def _try_scenario_2(self, user: dict | None) -> bool:
-        """Scenario 2: restore session, open sugar-test directly."""
-        if not self.config.reuse_session:
-            logger.info("Scenario 2 skipped: reuse.session is disabled")
-            return False
-
-        if not self.storage.has_saved_session():
-            logger.info("Scenario 2 skipped: no saved Chrome profile or cookie file")
-            return False
-
-        logger.info("Initial Check: restoring saved session artifacts")
-        self.storage.restore_session(self.driver)
-
-        logger.info("Scenario 2: opening sugar-test directly (skipping zpa-ba)")
-        self._open_application_once()
-
-        if self.application.is_ready():
-            if self.config.reuse_session:
-                self.storage.save_session(self.driver)
-            logger.info("Scenario 2 complete: sugar-test ready using restored session")
-            return True
-
-        if user and self._complete_microsoft_login_if_needed(user) and self._application_accessible():
-            logger.info(
-                "Scenario 2 complete: sugar-test reachable — Sugar CRM login handled by tests"
-            )
-            return True
 
         if self.application.requires_microsoft_login():
-            logger.info("Initial Check: Microsoft session expired — falling back to Scenario 1")
+            if self.config.skip_microsoft_login:
+                raise RuntimeError(
+                    "Saved session expired and Microsoft SSO is disabled for test runs "
+                    "(skip.microsoft.login=true). Run scripts/bootstrap_session.py once to refresh the session."
+                )
 
-        return False
+            if not user.get("username") or not user.get("password"):
+                raise RuntimeError(
+                    "sugar-test requires Microsoft SSO and credentials are missing. "
+                    "Set microsoft.username and microsoft.password in config/config.properties"
+                )
 
-    def _scenario_1(self, user: dict) -> ApplicationPage:
-        """Scenario 1: zpa-ba login once, open sugar-test once, then persist session."""
-        logger.info("=== Scenario 1: authenticate via zpa-ba, then open sugar-test ===")
-        AuthWorkflow(self.driver, self.config, mfa_timeout=self.mfa_timeout).login_at_auth_portal(user)
-
-        logger.info("Scenario 1: opening sugar-test after authentication")
-        self._open_application_once()
-
-        if not self._complete_microsoft_login_if_needed(user):
-            raise RuntimeError(
-                "Scenario 1 failed: Microsoft authentication did not complete for sugar-test"
+            logger.info(
+                "Microsoft SSO required — enter credentials and approve Authenticator when prompted"
+            )
+            print("\n>>> Microsoft sign-in: approve Authenticator on your phone when prompted.\n")
+            MicrosoftSSOPage(self.driver, self.config).login(
+                user["username"],
+                user["password"],
+                mfa_timeout=self.mfa_timeout,
             )
 
-        if not self._application_accessible():
+        self.browser_env.open_sugar_test_and_wait(context="after authentication")
+
+        if self.application.requires_microsoft_login():
             raise RuntimeError(
-                "Scenario 1 failed: sugar-test application did not load after authentication"
+                "Initial setup failed: Microsoft SSO did not complete. "
+                f"Current URL: {self.driver.current_url}"
             )
 
-        logger.info("Scenario 1 complete: sugar-test reachable — Sugar CRM login handled by tests")
-        return self.application
+        if self.config.application_host not in self.driver.current_url:
+            raise RuntimeError(
+                "Initial setup failed: browser is not on sugar-test after authentication. "
+                f"Current URL: {self.driver.current_url}"
+            )
+
+        if self.config.reuse_session:
+            self.storage.save_session(self.driver)
+
+        logger.info("Initial setup complete — sugar-test is ready; test execution can proceed")
 
     @classmethod
     def reset(cls) -> None:

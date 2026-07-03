@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -17,25 +18,57 @@ logger = get_logger("credaris.bootstrap")
 
 
 def main() -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Bootstrap a reusable authenticated session.")
+    parser.add_argument(
+        "--force-microsoft-auth",
+        action="store_true",
+        help="Clear saved cookies and skip restore so Microsoft SSO runs fresh.",
+    )
+    args = parser.parse_args()
+
     config = load_config()
 
     if not config.microsoft_username or not config.microsoft_password:
         print("Set microsoft.username and microsoft.password in config/config.properties first.")
         return 1
 
-    print("Bootstrapping session (Initial Check → Scenario 1 or 2)...")
-    print(f"  Auth portal:  {config.auth_home_url}")
+    print("Bootstrapping session (open sugar-test, wait for load, save session)...")
     print(f"  Application:  {config.application_url}")
     print(f"  Sugar login:  {config.application_login_url}")
     print(f"  Profile:      {config.resolved_user_data_dir}\n")
 
     driver = DriverFactory.create_driver(config)
     try:
+        if args.force_microsoft_auth:
+            print("Force Microsoft auth: clearing saved cookies before opening sugar-test.\n")
+            from utils.session_storage import SessionStorage
+
+            storage = SessionStorage(config)
+            storage.delete_cookies()
+            storage.clear_browser_cookies(driver)
+            os.environ["SKIP_SESSION_RESTORE"] = "true"
+
         app = SessionOrchestrator(driver, config).run()
+        print("\nMicrosoft SSO complete — sugar-test is open.")
+
+        if not config.sugar_username or not config.sugar_password:
+            print("Set sugar.username and sugar.password in config/config.properties for Sugar CRM login.")
+        else:
+            from login.sugar_login_prerequisite import login_to_sugar_crm
+
+            print("Completing Sugar CRM login...")
+            login_to_sugar_crm(
+                driver,
+                config,
+                {"username": config.sugar_username, "password": config.sugar_password},
+            )
+
         print("\nSession ready.")
         print(f"  URL:   {app.driver.current_url}")
         print(f"  Title: {app.get_title()}")
-        print("\nFuture runs will use Scenario 2 when the saved session is still valid.")
+        print("\nFuture runs will reuse the saved session when it is still valid.")
         return 0
     except Exception as exc:
         logger.exception("Bootstrap failed: %s", exc)

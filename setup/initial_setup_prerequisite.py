@@ -21,21 +21,21 @@ def run_initial_setup(
     """
     Prerequisite 1 — Initial Setup.
 
-    - Scenario 2: restore saved session and open Sugar CRM directly
-    - Scenario 1: ZPA / Microsoft SSO login, then open Sugar CRM
-    - Verify application is ready and browser is on the Sugar CRM host
+    - Restore saved session when available
+    - Open sugar-test directly and wait for elements to load (never zpa-ba)
+    - Skip Microsoft SSO when skip.microsoft.login=true (use saved session only)
     """
     try:
         application = SessionOrchestrator(driver, app_config).run(test_user)
     except RuntimeError as exc:
         pytest.skip(str(exc))
 
-    assert application.is_accessible(), (
-        "Initial setup did not complete — Sugar CRM is not reachable "
-        "(check ZPA/SSO access and application URL)"
-    )
     assert app_config.application_host in driver.current_url, (
         f"Expected Sugar CRM host '{app_config.application_host}' in current URL"
+    )
+    assert not application.requires_microsoft_login(), (
+        "Microsoft SSO is required but skip.microsoft.login=true. "
+        "Refresh the saved session with scripts/bootstrap_session.py."
     )
     logger.info("Initial setup prerequisite complete")
     return application

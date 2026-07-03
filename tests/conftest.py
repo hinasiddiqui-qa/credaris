@@ -41,7 +41,34 @@ ALLURE_SUITE_LAYOUT = {
         "parent_suite": "Leads",
         "title": "Create lead from contact and open detail view",
     },
+    "tasks": {
+        "parent_suite": "Leads",
+        "title": "Create task from lead detail view",
+    },
+    "credit_request": {
+        "parent_suite": "Leads",
+        "title": "Set Credit Request panel fields on lead detail view",
+    },
+    "applications": {
+        "parent_suite": "Leads",
+        "title": "Create application from lead detail view",
+    },
 }
+
+
+# Intended execution order (independent of alphabetical file naming). Tests
+# within the same marker keep their original relative (collection) order.
+_MARKER_ORDER = list(ALLURE_SUITE_LAYOUT.keys())
+
+
+def pytest_collection_modifyitems(session, config, items):
+    def sort_key(item):
+        for index, marker_name in enumerate(_MARKER_ORDER):
+            if item.get_closest_marker(marker_name):
+                return index
+        return len(_MARKER_ORDER)
+
+    items.sort(key=sort_key)
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -113,7 +140,7 @@ def session_prerequisites(driver, app_config: AppConfig, test_user, sugar_user):
     2. Sugar CRM login
     3. Shared suite contact create
     """
-    announce("Step 1/3 — Initial setup: ZPA / Microsoft SSO / open Sugar CRM")
+    announce("Step 1/3 — Initial setup: restore session and open sugar-test")
     application_ready = run_initial_setup(driver, app_config, test_user)
 
     announce("Step 2/3 — Sugar CRM login")
@@ -142,6 +169,81 @@ def sugar_crm_ready(session_prerequisites):
 def suite_contact_page(session_prerequisites):
     """Shared Contacts page with suite contact detail already open."""
     return session_prerequisites
+
+
+@pytest.fixture(scope="session")
+def suite_lead_page(driver, app_config: AppConfig, suite_contact_page):
+    """
+    Shared Lead detail view for the suite contact — created once per session.
+
+    If the leads test already created the lead earlier in this session, its
+    detail view is reused as-is; otherwise it is created here from the suite
+    contact so this fixture (and the tests that depend on it) work standalone.
+    """
+    from pages.contact_detail_page import ContactDetailPage
+    from pages.leads_page import LeadsPage
+
+    contact = load_json("contacts.json")[0]
+    leads_page = LeadsPage(driver, app_config)
+
+    if leads_page.is_detail_view_loaded(
+        contact["first_name"], contact["last_name"], quick=True
+    ):
+        logger.info("Suite lead detail view already open — reusing it")
+        return leads_page
+
+    logger.info("Creating suite lead from suite contact (once per session)")
+    suite_contact_page.ensure_contact_detail_open(
+        contact["first_name"], contact["last_name"]
+    )
+    choosing_document = ContactDetailPage(driver, app_config).create_lead_from_contact()
+    choosing_document.wait_for_contact_detail_redirect(
+        contact["first_name"], contact["last_name"]
+    )
+    leads_page.open_leads_listview_and_open_latest_lead_detail(
+        contact["first_name"], contact["last_name"]
+    )
+    return leads_page
+
+
+@pytest.fixture(scope="session")
+def suite_task_page(driver, app_config: AppConfig, suite_lead_page):
+    """
+    Shared Task created from the suite lead — created once per session.
+
+    Performs the full 'Create Task' flow (Category, Teams, Save) and clicks the
+    related Lead link to return to the lead detail view. Session-scoped so this
+    only ever runs once, regardless of how many tests depend on it or the order
+    in which test files are collected.
+    """
+    task = load_json("tasks.json")[0]
+    logger.info("Creating suite task from suite lead (once per session)")
+    task_page = suite_lead_page.click_create_task()
+    task_page.create_task(
+        category=task["category"],
+        team_search=task["team_search"],
+        team_option=task["team_option"],
+    )
+    return task_page.click_lead_link()
+
+
+@pytest.fixture(scope="session")
+def suite_credit_request_page(driver, app_config: AppConfig, suite_task_page):
+    """
+    Shared Credit Request panel setup on the suite lead — performed once per
+    session: opens the Credit Request tab, sets the Legal terms customer date,
+    selects Credit usage, and saves. Depends on 'suite_task_page' so the task is
+    always created first, regardless of test file collection order.
+    """
+    from pages.credit_request_page import CreditRequestPage
+
+    logger.info("Setting Credit Request panel fields on suite lead (once per session)")
+    credit_request = CreditRequestPage(driver, app_config)
+    credit_request.open_credit_request_tab()
+    credit_request.set_legal_terms_customer_date()
+    credit_request.select_credit_usage("Vehicle")
+    credit_request.click_save()
+    return credit_request
 
 
 @pytest.fixture(scope="session")

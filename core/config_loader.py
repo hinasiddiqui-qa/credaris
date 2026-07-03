@@ -36,6 +36,7 @@ class AppConfig:
     log_level: str
     keep_browser_open: bool
     reuse_session: bool
+    skip_microsoft_login: bool
     chrome_user_data_dir: str
     chrome_profile_directory: str
     mfa_wait_timeout: int
@@ -166,7 +167,7 @@ def load_config(config_path: Path | None = None) -> AppConfig:
             os.getenv("QUICK_POLL_TIMEOUT", section.get("quick.poll.timeout", "2"))
         ),
         sugar_load_timeout=int(
-            os.getenv("SUGAR_LOAD_TIMEOUT", section.get("sugar.load.timeout", "60"))
+            os.getenv("SUGAR_LOAD_TIMEOUT", section.get("sugar.load.timeout", "120"))
         ),
         screenshot_on_failure=_parse_bool(
             os.getenv("SCREENSHOT_ON_FAILURE", section.get("screenshot.on.failure", "true")),
@@ -180,6 +181,9 @@ def load_config(config_path: Path | None = None) -> AppConfig:
         reuse_session=_parse_bool(
             os.getenv("REUSE_SESSION", section.get("reuse.session", "true")),
             True,
+        ),
+        skip_microsoft_login=_parse_bool(
+            os.getenv("SKIP_MICROSOFT_SSO", section.get("skip.microsoft.login", "false")),
         ),
         chrome_user_data_dir=os.getenv(
             "CHROME_USER_DATA_DIR",

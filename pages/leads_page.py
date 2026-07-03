@@ -21,6 +21,22 @@ class LeadsPage(BasePage):
         By.CSS_SELECTOR,
         ".flex-list-view, .list-view, table.dataTable, .table-responsive",
     )
+    # Quick Actions widget on Lead detail view — <a id="lq_create_task" title="Create Task">
+    CREATE_TASK_BUTTON_LOCATORS = (
+        (By.CSS_SELECTOR, "#lq_create_task"),
+        (By.CSS_SELECTOR, "a[title='Create Task']"),
+        (By.XPATH, "//a[@id='lq_create_task']"),
+        (By.XPATH, "//a[@title='Create Task']"),
+        (By.XPATH, "//a[normalize-space()='Create Task']"),
+    )
+    # Quick Actions widget on Lead detail view — <a id="lq_create_application" title="Create Application">
+    CREATE_APPLICATION_BUTTON_LOCATORS = (
+        (By.CSS_SELECTOR, "#lq_create_application"),
+        (By.CSS_SELECTOR, "a[title='Create Application']"),
+        (By.XPATH, "//a[@id='lq_create_application']"),
+        (By.XPATH, "//a[@title='Create Application']"),
+        (By.XPATH, "//a[normalize-space()='Create Application']"),
+    )
 
     @property
     def leads_listview_url(self) -> str:
@@ -313,3 +329,63 @@ class LeadsPage(BasePage):
         self.open_leads_listview()
         self.open_latest_lead_detail(first_name, last_name)
         return self
+
+    def click_create_task(self):
+        """Click the 'Create Task' quick action on the Lead detail view."""
+        from pages.task_create_page import TaskCreatePage
+
+        logger.info("Clicking Create Task quick action on lead detail view")
+        self.wait_for_sugar_loading_overlay_gone(context="lead detail quick actions")
+
+        for locator in self.CREATE_TASK_BUTTON_LOCATORS:
+            if self.click_if_visible_quick(locator):
+                logger.info("Clicked Create Task using locator: %s", locator)
+                break
+            try:
+                self.click_with_fallback(locator)
+                logger.info("Clicked Create Task using locator: %s", locator)
+                break
+            except Exception:
+                continue
+        else:
+            raise RuntimeError("Could not find Create Task quick action on lead detail view")
+
+        task_page = TaskCreatePage(self.driver, self.config)
+        task_page.wait_until_loaded()
+        return task_page
+
+    def click_create_application(self) -> LeadsPage:
+        """
+        Scroll up to and click the 'Create Application' quick action on the Lead detail view.
+
+        Uses find_elements (plural) and clicks the first *visible* match rather than
+        relying on find_element/EC locators (which only ever look at the first DOM
+        match) — Sugar can render a hidden duplicate of this same quick action
+        elsewhere in the DOM, and clicking that silently does nothing.
+        """
+        logger.info("Clicking Create Application quick action on lead detail view")
+        self.wait_for_sugar_loading_overlay_gone(context="lead detail quick actions")
+
+        for by, selector in self.CREATE_APPLICATION_BUTTON_LOCATORS:
+            try:
+                candidates = self.driver.find_elements(by, selector)
+            except Exception:
+                continue
+            for element in candidates:
+                try:
+                    if not element.is_displayed():
+                        continue
+                except Exception:
+                    continue
+                self.scroll_to_element(element)
+                try:
+                    element.click()
+                except Exception:
+                    self.driver.execute_script("arguments[0].click();", element)
+                logger.info("Clicked Create Application using locator: %s", (by, selector))
+                self.wait_for_sugar_loading_overlay_gone(context="after create application click")
+                return self
+
+        raise RuntimeError(
+            "Could not find a visible Create Application quick action on lead detail view"
+        )

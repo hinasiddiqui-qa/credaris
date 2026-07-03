@@ -20,6 +20,8 @@ class TestContactsCreate(BaseTest):
         5. Open the created contact detail view
 
         Contact is created once per suite via the suite_contact_page fixture.
+        The Actions button is exercised once, in the leads test, to avoid a
+        redundant open/close cycle on the toggle dropdown.
         """
         contact = load_json("contacts.json")[0]
         suite_contact_page.ensure_contact_detail_open(
