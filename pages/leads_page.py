@@ -354,7 +354,7 @@ class LeadsPage(BasePage):
         task_page.wait_until_loaded()
         return task_page
 
-    def click_create_application(self) -> LeadsPage:
+    def click_create_application(self):
         """
         Scroll up to and click the 'Create Application' quick action on the Lead detail view.
 
@@ -362,30 +362,56 @@ class LeadsPage(BasePage):
         relying on find_element/EC locators (which only ever look at the first DOM
         match) — Sugar can render a hidden duplicate of this same quick action
         elsewhere in the DOM, and clicking that silently does nothing.
-        """
-        logger.info("Clicking Create Application quick action on lead detail view")
-        self.wait_for_sugar_loading_overlay_gone(context="lead detail quick actions")
 
-        for by, selector in self.CREATE_APPLICATION_BUTTON_LOCATORS:
-            try:
-                candidates = self.driver.find_elements(by, selector)
-            except Exception:
-                continue
-            for element in candidates:
+        Returns the resulting ApplicationCreatePage (mirrors click_create_task()),
+        after waiting for it to actually load — so callers never proceed against a
+        stale Lead detail view if the click didn't open the form.
+        """
+        from pages.application_create_page import ApplicationCreatePage
+
+        logger.info("Clicking Create Application quick action on lead detail view")
+
+        def _click_it() -> bool:
+            self.wait_for_sugar_loading_overlay_gone(context="lead detail quick actions")
+            for by, selector in self.CREATE_APPLICATION_BUTTON_LOCATORS:
                 try:
-                    if not element.is_displayed():
-                        continue
+                    candidates = self.driver.find_elements(by, selector)
                 except Exception:
                     continue
-                self.scroll_to_element(element)
-                try:
-                    element.click()
-                except Exception:
-                    self.driver.execute_script("arguments[0].click();", element)
-                logger.info("Clicked Create Application using locator: %s", (by, selector))
-                self.wait_for_sugar_loading_overlay_gone(context="after create application click")
-                return self
+                for element in candidates:
+                    try:
+                        if not element.is_displayed():
+                            continue
+                    except Exception:
+                        continue
+                    self.scroll_to_element(element)
+                    try:
+                        element.click()
+                    except Exception:
+                        self.driver.execute_script("arguments[0].click();", element)
+                    logger.info("Clicked Create Application using locator: %s", (by, selector))
+                    self.wait_for_sugar_loading_overlay_gone(context="after create application click")
+                    return True
+            return False
 
-        raise RuntimeError(
-            "Could not find a visible Create Application quick action on lead detail view"
-        )
+        if not _click_it():
+            raise RuntimeError(
+                "Could not find a visible Create Application quick action on lead detail view"
+            )
+
+        application_page = ApplicationCreatePage(self.driver, self.config)
+        try:
+            application_page.wait_until_loaded()
+            return application_page
+        except Exception:
+            # The click can occasionally register without the form actually
+            # opening (observed elsewhere in this suite too) — nudge once more
+            # before giving up.
+            logger.info("Create Application view did not load after first click — retrying once")
+            if not _click_it():
+                raise RuntimeError(
+                    "Could not find a visible Create Application quick action on lead detail view "
+                    "on retry"
+                )
+            application_page.wait_until_loaded()
+            return application_page

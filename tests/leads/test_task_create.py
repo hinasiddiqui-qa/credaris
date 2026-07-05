@@ -16,8 +16,9 @@ class TestTaskCreate(BaseTest):
         2. Click 'Create Task' quick action on the lead detail view
         3. On the Task create view, select Category: Antrag verzichten
         4. Scroll to Teams field, search and select: Callback
-        5. Click Save
-        6. On the saved Task detail view, click the related Lead link to return to it
+        5. Click Due Date field, open the calendar, and select day 6
+        6. Click Save (once, after the Due Date is set)
+        7. On the saved Task detail view, click the related Lead link to return to it
 
         The actual flow is performed once per session by the shared
         'suite_task_page' fixture (in tests/conftest.py) — this test exercises it,

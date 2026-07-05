@@ -2,6 +2,7 @@
   {
     "category": "Antrag verzichten",
     "team_search": "Callback",
-    "team_option": "Callback"
+    "team_option": "Callback",
+    "due_date_day": "6"
   }
 ]

@@ -211,8 +211,9 @@ def suite_task_page(driver, app_config: AppConfig, suite_lead_page):
     """
     Shared Task created from the suite lead — created once per session.
 
-    Performs the full 'Create Task' flow (Category, Teams, Save) and clicks the
-    related Lead link to return to the lead detail view. Session-scoped so this
+    Performs the full 'Create Task' flow (Category, Teams, Due Date, Save) and
+    clicks the related Lead link to return to the lead detail view. Save is
+    clicked last, once, only after the Due Date is set. Session-scoped so this
     only ever runs once, regardless of how many tests depend on it or the order
     in which test files are collected.
     """
@@ -223,6 +224,7 @@ def suite_task_page(driver, app_config: AppConfig, suite_lead_page):
         category=task["category"],
         team_search=task["team_search"],
         team_option=task["team_option"],
+        due_date_day=task.get("due_date_day"),
     )
     return task_page.click_lead_link()
 

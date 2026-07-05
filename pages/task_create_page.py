@@ -273,6 +273,87 @@ class TaskCreatePage(BasePage):
                 continue
         raise RuntimeError(f"Could not select option '{option_text}'")
 
+    def _click_visible_calendar_day(self, day_text: str) -> bool:
+        """
+        Click a visible calendar day cell matching the exact day-of-month text,
+        preferring a cell flagged as 'today'/'active'/'selected' and skipping
+        muted overflow days from adjacent months (old/new/disabled classes).
+        Same generic, widget-agnostic approach used for the Credit Request
+        panel's date picker (matches by visible text, not fixed widget classes).
+        """
+        script = """
+            const dayText = arguments[0];
+            const nodes = Array.from(document.querySelectorAll('td, a, span, div'));
+            const candidates = nodes.filter((el) => {
+                if (el.children.length > 1) return false;
+                if (!el.offsetParent) return false;
+                const text = (el.textContent || '').trim();
+                if (text !== dayText) return false;
+                const cls = el.className || '';
+                if (typeof cls !== 'string') return false;
+                if (/\\b(old|new|disabled|unselectable|muted|out-of-range)\\b/i.test(cls)) return false;
+                const rect = el.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0;
+            });
+            if (candidates.length === 0) { return false; }
+            const preferred = candidates.find((el) => /today|active|selected|highlight/i.test(el.className))
+                || candidates[0];
+            const clickable = preferred.querySelector('a') || preferred;
+            clickable.click();
+            return true;
+        """
+        try:
+            return bool(self.driver.execute_script(script, day_text))
+        except Exception:
+            return False
+
+    def set_due_date(self, day: str) -> TaskCreatePage:
+        """
+        Click the Due Date field to open its calendar, then select the given day
+        of the current month (e.g. '6').
+
+        Mirrors the Credit Request panel's date-picker flow: click the field to
+        (re)trigger the calendar, then poll for the day cell, retrying the click
+        once if the calendar doesn't appear right away.
+        """
+        logger.info("Setting Due Date to day '%s' of the current month", day)
+        scope_xpath = self._field_scope_xpath("Due Date")
+        self._scroll_field_into_view(scope_xpath)
+
+        date_input_xpath = f"{scope_xpath}//input[not(@type='hidden')][1]"
+
+        def _click_due_date_field() -> None:
+            try:
+                date_input = self.driver.find_element(By.XPATH, date_input_xpath)
+            except Exception:
+                return
+            self.scroll_to_element(date_input)
+            try:
+                date_input.click()
+            except Exception:
+                self.driver.execute_script("arguments[0].click();", date_input)
+
+        _click_due_date_field()
+
+        deadline = time.time() + self.config.explicit_wait
+        retry_deadline = time.time() + min(4, self.config.explicit_wait)
+        retried = False
+        while time.time() < deadline:
+            if self._click_visible_calendar_day(day):
+                logger.info("Selected Due Date day '%s'", day)
+                # Do NOT press Escape here to "close" the calendar — the Task
+                # quickcreate drawer treats Escape as Cancel (closing/discarding
+                # the whole drawer), not just dismissing the calendar popup. The
+                # widget already closes itself once a day is clicked.
+                return self
+            if not retried and time.time() > retry_deadline:
+                logger.info("Calendar not visible yet — clicking the Due Date field again")
+                _click_due_date_field()
+                retried = True
+            time.sleep(0.2)
+
+        raise RuntimeError(f"Could not select day '{day}' on the Due Date calendar")
+
     def select_category(self, option_text: str) -> TaskCreatePage:
         logger.info("Selecting Category: %s", option_text)
         scope_xpath = self._field_scope_xpath("Category")
@@ -324,15 +405,25 @@ class TaskCreatePage(BasePage):
                 return self
         raise RuntimeError("Could not find a visible Save button on Task create view")
 
-    def create_task(self, category: str, team_search: str, team_option: str) -> TaskCreatePage:
+    def create_task(
+        self,
+        category: str,
+        team_search: str,
+        team_option: str,
+        due_date_day: str | None = None,
+    ) -> TaskCreatePage:
         """
         Task create flow:
         1. Select Category
         2. Search and select Teams
-        3. Click Save
+        3. Set Due Date (if provided)
+        4. Click Save — done last, once, only after all other fields (including
+           Due Date) are filled in.
         """
         self.select_category(category)
         self.select_teams(team_search, team_option)
+        if due_date_day:
+            self.set_due_date(due_date_day)
         self.click_save()
         return self
 
