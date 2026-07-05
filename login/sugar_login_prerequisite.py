@@ -19,14 +19,9 @@ def login_to_sugar_crm(
     app_config: AppConfig,
     sugar_user: dict,
 ) -> ContactsPage:
-    """
-    Open the Sugar login page first, then enter Sugar credentials when
-    needed, and wait for app load before tests.
-    """
+    """Enter Sugar credentials when needed, then wait for app load before tests."""
     sugar_login = SugarLoginPage(driver, app_config)
     contacts_page = ContactsPage(driver, app_config)
-
-    sugar_login.open_login()
 
     if sugar_login.is_login_form_visible() or sugar_login.is_displayed():
         sugar_login.login(sugar_user["username"], sugar_user["password"])
