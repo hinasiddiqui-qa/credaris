@@ -5,6 +5,7 @@
     "credit_amount": "45000",
     "credit_duration": "24",
     "interest_rate": "4.90",
-    "explanation_soko": "QA Test"
+    "explanation_soko": "QA Test",
+    "provider_status": "Granted"
   }
 ]

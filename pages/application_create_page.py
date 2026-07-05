@@ -20,12 +20,17 @@ class ApplicationCreatePage(BasePage):
     INTEREST_RATE_FIELD_LABEL = "Interest Rate"
     SOKO_FIELD_LABEL = "SOKO"
     EXPLANATION_SOKO_FIELD_LABEL = "Explanation SOKO"
+    PROVIDER_STATUS_FIELD_LABEL = "Provider status"
     # Confirmed field 'data-name' attributes from live DOM inspection — exact
     # attribute match, so preferred over label-text matching when available
     # (avoids any label-text ambiguity entirely for these fields).
     FIELD_DATA_NAME = {
         "SOKO": "dotb_soko_c",
         "Explanation SOKO": "explanation_soko_c",
+        # Confirmed via DOM inspection — 'Provider status' otherwise shares a
+        # text prefix with 'Provider', the exact ambiguity that already
+        # caused a false-match bug for that field (see _field_scope_xpath).
+        "Provider status": "provider_status_id_c",
     }
     APPLIED_WITH_BANK_SECTION_HEADER = (
         By.XPATH,
@@ -366,6 +371,20 @@ class ApplicationCreatePage(BasePage):
         self._close_any_open_dropdown()
         return self
 
+    def select_provider_status(self, option_text: str) -> ApplicationCreatePage:
+        """Open the Provider status dropdown and select the given option (e.g. 'Granted')."""
+        logger.info("Selecting Provider status: %s", option_text)
+        self._close_any_open_dropdown()
+        scope_xpath = self._field_scope_xpath(self.PROVIDER_STATUS_FIELD_LABEL)
+        self._scroll_to_locator((By.XPATH, scope_xpath))
+        used_inline = self._open_select2_dropdown(scope_xpath)
+        self._type_into_open_dropdown_search(
+            option_text, scope_xpath=scope_xpath, used_inline=used_inline
+        )
+        self._select_open_dropdown_option(option_text)
+        self._close_any_open_dropdown()
+        return self
+
     def select_interest_rate(self, option_text: str) -> ApplicationCreatePage:
         """Open the Interest Rate dropdown and select the given option (e.g. '4.90')."""
         logger.info("Selecting Interest Rate: %s", option_text)
@@ -457,6 +476,7 @@ class ApplicationCreatePage(BasePage):
         credit_duration: str,
         interest_rate: str,
         explanation_soko: str | None = None,
+        provider_status: str | None = None,
     ) -> ApplicationCreatePage:
         """
         Create Application flow:
@@ -470,7 +490,8 @@ class ApplicationCreatePage(BasePage):
         8. Enter Explanation SOKO (only rendered once SOKO is checked — required
            before Save will succeed, otherwise the view stays stuck open with a
            client-side validation error)
-        9. Click Save
+        9. Select Provider status (if provided) — done last, right before Save
+        10. Click Save
         """
         self.select_provider(provider)
         self.enter_bank_now_id(bank_now_id)
@@ -481,5 +502,7 @@ class ApplicationCreatePage(BasePage):
         self.check_soko()
         if explanation_soko:
             self.enter_explanation_soko(explanation_soko)
+        if provider_status:
+            self.select_provider_status(provider_status)
         self.click_save()
         return self

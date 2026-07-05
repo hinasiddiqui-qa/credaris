@@ -28,6 +28,7 @@ class TestCreateApplication(BaseTest):
            - Select Interest Rate
            - Check the SOKO checkbox
            - Enter Explanation SOKO (only appears once SOKO is checked)
+           - Select Provider status: Granted
            - Click Save
 
         Depends on 'suite_credit_request_page' so this always runs after the
@@ -43,4 +44,5 @@ class TestCreateApplication(BaseTest):
             credit_duration=application_data["credit_duration"],
             interest_rate=application_data["interest_rate"],
             explanation_soko=application_data.get("explanation_soko"),
+            provider_status=application_data.get("provider_status"),
         )
