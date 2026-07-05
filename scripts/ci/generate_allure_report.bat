@@ -13,10 +13,13 @@ if not exist "%RESULTS_DIR%" (
     exit /b 0
 )
 
+set "ALLURE_TOOL_HOME=C:\jenkins-agent\tools\org.allurereport.jenkins.tools.AllureCommandlineInstallation\Allure"
+
 where allure >nul 2>&1
 if errorlevel 1 (
-    if exist "C:\jenkins-agent\tools\org.allurereport.jenkins.tools.AllureCommandlineInstallation\Allure\bin\allure.bat" (
-        set "ALLURE_BIN=C:\jenkins-agent\tools\org.allurereport.jenkins.tools.AllureCommandlineInstallation\Allure\bin\allure.bat"
+    if exist "%ALLURE_TOOL_HOME%\bin\allure.bat" (
+        set "ALLURE_BIN=%ALLURE_TOOL_HOME%\bin\allure.bat"
+        set "APP_HOME=%ALLURE_TOOL_HOME%"
     ) else (
         echo Allure CLI not found on PATH — Jenkins Allure plugin will still publish results.
         exit /b 0
@@ -25,6 +28,12 @@ if errorlevel 1 (
     set "ALLURE_BIN=allure"
 )
 
+rem Work around a known Allure Commandline 2.40+ Windows launcher bug: allure.bat
+rem does "endlocal & java ..." which clears APP_HOME right before starting Java,
+rem so the backend silently skips generating data/behaviors.json and
+rem data/packages.json (Categories/Suites still work). Pre-setting APP_HOME here
+rem survives that endlocal, since it restores the OUTER scope's value instead of
+rem clearing it. Upstream bug: allure-framework/allure2#3351 (fixed in #3353).
 "%ALLURE_BIN%" generate "%RESULTS_DIR%" -o "%REPORT_DIR%" --clean
 if errorlevel 1 exit /b 1
 

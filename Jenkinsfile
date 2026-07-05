@@ -96,13 +96,23 @@ pipeline {
         always {
             junit allowEmptyResults: true, testResults: 'reports/pytest-junit.xml'
             archiveArtifacts artifacts: 'reports/**,logs/**,screenshots/**', allowEmptyArchive: true, fingerprint: true
-            allure([
-                includeProperties: false,
-                jdk: '',
-                properties: [],
-                reportBuildPolicy: 'ALWAYS',
-                results: [[path: 'reports/allure-results']]
-            ])
+            // Work around a known Allure Commandline 2.40+ Windows launcher bug
+            // (allure-framework/allure2#3351): allure.bat's "endlocal & java ..."
+            // clears APP_HOME right before starting Java, so the plugin's report
+            // silently loses its "Behaviors" and "Packages" tabs (500 error /
+            // "Unexpected token '<'" — the underlying data/behaviors.json and
+            // data/packages.json never get written). Pre-setting APP_HOME here
+            // survives that endlocal, since it restores the OUTER scope's value
+            // instead of clearing it.
+            withEnv(["APP_HOME=C:\\jenkins-agent\\tools\\org.allurereport.jenkins.tools.AllureCommandlineInstallation\\Allure"]) {
+                allure([
+                    includeProperties: false,
+                    jdk: '',
+                    properties: [],
+                    reportBuildPolicy: 'ALWAYS',
+                    results: [[path: 'reports/allure-results']]
+                ])
+            }
             script {
                 sendAllureEmail()
             }
