@@ -37,6 +37,14 @@ class LeadsPage(BasePage):
         (By.XPATH, "//a[@title='Create Application']"),
         (By.XPATH, "//a[normalize-space()='Create Application']"),
     )
+    # Quick Actions widget on Lead detail view — <a id="lq_create_contract" title="Create Contract">
+    CREATE_CONTRACT_BUTTON_LOCATORS = (
+        (By.CSS_SELECTOR, "#lq_create_contract"),
+        (By.CSS_SELECTOR, "a[title='Create Contract']"),
+        (By.XPATH, "//a[@id='lq_create_contract']"),
+        (By.XPATH, "//a[@title='Create Contract']"),
+        (By.XPATH, "//a[normalize-space()='Create Contract']"),
+    )
 
     @property
     def leads_listview_url(self) -> str:
@@ -415,3 +423,56 @@ class LeadsPage(BasePage):
                 )
             application_page.wait_until_loaded()
             return application_page
+
+    def click_create_contract(self):
+        """
+        Click the 'Create Contract' quick action on the Lead detail view.
+
+        Mirrors click_create_application() — scans all DOM matches and clicks
+        the first visible one, then waits for the contract create view to load.
+        """
+        from pages.contract_create_page import ContractCreatePage
+
+        logger.info("Clicking Create Contract quick action on lead detail view")
+
+        def _click_it() -> bool:
+            self.wait_for_sugar_loading_overlay_gone(context="lead detail quick actions")
+            for by, selector in self.CREATE_CONTRACT_BUTTON_LOCATORS:
+                try:
+                    candidates = self.driver.find_elements(by, selector)
+                except Exception:
+                    continue
+                for element in candidates:
+                    try:
+                        if not element.is_displayed():
+                            continue
+                    except Exception:
+                        continue
+                    self.scroll_to_element(element)
+                    try:
+                        element.click()
+                    except Exception:
+                        self.driver.execute_script("arguments[0].click();", element)
+                    logger.info("Clicked Create Contract using locator: %s", (by, selector))
+                    self.wait_for_sugar_loading_overlay_gone(context="after create contract click")
+                    return True
+            return False
+
+        if not _click_it():
+            raise RuntimeError(
+                "Could not find a visible Create Contract quick action on lead detail view"
+            )
+
+        contract_page = ContractCreatePage(self.driver, self.config)
+        try:
+            contract_page.wait_until_loaded()
+            return contract_page
+        except Exception:
+            logger.info("Create Contract view did not load after first click — retrying once")
+            if not _click_it():
+                raise RuntimeError(
+                    "Could not find a visible Create Contract quick action on lead detail view "
+                    "on retry"
+                )
+            contract_page.wait_until_loaded()
+            return contract_page

@@ -53,6 +53,10 @@ ALLURE_SUITE_LAYOUT = {
         "parent_suite": "Leads",
         "title": "Create application from lead detail view",
     },
+    "contracts": {
+        "parent_suite": "Leads",
+        "title": "Create contract from lead detail view",
+    },
 }
 
 
@@ -246,6 +250,59 @@ def suite_credit_request_page(driver, app_config: AppConfig, suite_task_page):
     credit_request.select_credit_usage("Vehicle")
     credit_request.click_save()
     return credit_request
+
+
+@pytest.fixture(scope="session")
+def suite_application_page(driver, app_config: AppConfig, suite_credit_request_page):
+    """
+    Shared Application created from the suite lead — performed once per session.
+
+    Opens Create Application from the lead detail view, fills the form, saves,
+    and waits to return to the lead detail view. Depends on
+    'suite_credit_request_page' so Credit Request fields are always saved first.
+    """
+    from pages.leads_page import LeadsPage
+
+    contact = load_json("contacts.json")[0]
+    application_data = load_json("applications.json")[0]
+    logger.info("Creating suite application from suite lead (once per session)")
+    leads_page = LeadsPage(driver, app_config)
+    application_page = leads_page.click_create_application()
+    application_page.create_application(
+        provider=application_data["provider"],
+        bank_now_id=application_data["bank_now_id"],
+        credit_amount=application_data["credit_amount"],
+        credit_duration=application_data["credit_duration"],
+        interest_rate=application_data["interest_rate"],
+        explanation_soko=application_data.get("explanation_soko"),
+        provider_status=application_data.get("provider_status"),
+    )
+    leads_page.wait_until_detail_view_loaded(contact["first_name"], contact["last_name"])
+    return leads_page
+
+
+@pytest.fixture(scope="session")
+def suite_contract_page(driver, app_config: AppConfig, suite_application_page):
+    """
+    Shared Contract created from the suite lead — performed once per session.
+
+    Clicks Create Contract on the lead detail view (after the application is
+    saved), fills the contract form, and saves. Depends on
+    'suite_application_page' so the application is always created first.
+    """
+    from pages.leads_page import LeadsPage
+
+    contract_data = load_json("contracts.json")[0]
+    logger.info("Creating suite contract from suite lead (once per session)")
+    leads_page = LeadsPage(driver, app_config)
+    contract_page = leads_page.click_create_contract()
+    contract_page.create_contract(
+        provider_contract_number=contract_data["provider_contract_number"],
+        credit_amount=contract_data["credit_amount"],
+        interest_rate=contract_data["interest_rate"],
+        credit_duration=contract_data["credit_duration"],
+    )
+    return contract_page
 
 
 @pytest.fixture(scope="session")
